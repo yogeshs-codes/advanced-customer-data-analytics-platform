@@ -1,4 +1,4 @@
-# Customer Demand Analysis
+# Advanced Customer Data Analytics Platform
 
 ## Overview
 
