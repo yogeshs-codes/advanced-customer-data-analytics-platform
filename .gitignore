@@ -3,7 +3,7 @@ data/*
 !data/README.md
 
 output/
-**pycache**/
+__pycache__/
 *.pyc
 
 .ipynb_checkpoints/
