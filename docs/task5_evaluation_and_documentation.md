@@ -2,11 +2,13 @@
 
 ## 1. Objective
 
-The objective of Task 5 is to evaluate the machine learning baseline model using relevant performance metrics and document the complete model training and evaluation methodology.
+The objective of Task 5 is to evaluate the candidate machine learning models, select the best-performing model, validate its performance using cross-validation, evaluate it on an independent test dataset, and document the final model selection.
 
-The Logistic Regression model developed in Task 4 is used as the baseline classifier for predicting whether a customer will make a future purchase of a product.
+The task focuses on predicting whether a customer will make a future purchase of a product.
 
-This baseline establishes a reference point for future model improvements.
+Model selection was based primarily on **ROC-AUC** and **F1-score**, while **recall** was also considered because identifying future purchases is an important objective of the problem.
+
+After model evaluation and validation, **Gradient Boosting** was selected as the final model.
 
 ---
 
@@ -16,18 +18,11 @@ The project uses the prepared customer-product datasets generated during the ear
 
 The Task 3 process produced separate training and testing datasets.
 
-The training dataset contains:
+- **Training dataset:** 1,326,118 rows
+- **Testing dataset:** 2,661,591 rows
+- **Selected features:** 19
 
-- **1,326,118 rows**
-- **19 selected features**
-
-The testing dataset contains:
-
-- **2,661,591 rows**
-- **19 selected features**
-
-The target variable is:
-
+**Target variable:**
 - `0` — No Future Purchase
 - `1` — Future Purchase
 
@@ -35,36 +30,34 @@ The target variable is:
 
 The training dataset was balanced through random undersampling:
 
-| Target | Count | Proportion |
-|---|---:|---:|
-| No Future Purchase (0) | 663,059 | 50.00% |
-| Future Purchase (1) | 663,059 | 50.00% |
+| Target Class | Count | Proportion |
+| :--- | ---: | ---: |
+| **No Future Purchase (0)** | 663,059 | 50.00% |
+| **Future Purchase (1)** | 663,059 | 50.00% |
+| **Total** | **1,326,118** | **100.00%** |
 
 The testing dataset retained the original class distribution:
 
-| Target | Count | Proportion |
-|---|---:|---:|
-| No Future Purchase (0) | 2,495,826 | 93.772% |
-| Future Purchase (1) | 165,765 | 6.228% |
+| Target Class | Count | Proportion |
+| :--- | ---: | ---: |
+| **No Future Purchase (0)** | 2,495,826 | 93.772% |
+| **Future Purchase (1)** | 165,765 | 6.228% |
+| **Total** | **2,661,591** | **100.000%** |
 
-Maintaining the original distribution in the test dataset provides a more realistic evaluation of how the baseline model performs on the expected class distribution.
+Maintaining the original distribution in the test dataset provides a more realistic evaluation of how the final model performs on the expected class distribution.
 
 ---
 
 ## 3. Selected Features
 
-A total of **19 features** were selected for model training.
+A total of **19 features** were used by the final model.
 
-### Categorical Features
-
-The categorical features were:
+### Categorical / Identifier Features
 
 - `department_id`
 - `aisle_id`
 
 ### Numerical Features
-
-The numerical features were:
 
 - `user_product_purchase_count`
 - `user_product_reorder_count`
@@ -84,316 +77,299 @@ The numerical features were:
 - `product_unique_users`
 - `product_reorder_rate`
 
-No missing values were present in either the training or testing feature datasets.
+No missing values were present in the training or testing feature datasets.
 
 ---
 
-## 4. Baseline Model
+## 4. Final Model Selection and Storage
 
-The baseline model used for this task is **Logistic Regression**.
+Candidate models were evaluated using the model-selection workflow developed for Task 5. The final model was selected based on cross-validation performance, with emphasis on ROC-AUC and F1-score while also considering recall.
 
-Logistic Regression was selected as a baseline classification model because it provides a simple and interpretable reference point for the future-purchase prediction problem.
+**Gradient Boosting** was selected as the final model because it achieved strong and consistent cross-validation performance and maintained a very small ROC-AUC difference between cross-validation and independent test evaluation.
 
-The model was trained using the prepared training dataset and then used to generate predictions for the untouched testing dataset.
+The final model configuration is:
 
-The implementation is available in:
+```text
+GradientBoostingClassifier(max_depth=5, random_state=42)
+```
 
-`notebooks/task4_baseline_model.ipynb`
+The final serialized model is stored at:
 
----
+```text
+output/models/final_selected_model.joblib
+```
 
-## 5. Preprocessing Methodology
-
-A preprocessing pipeline was created before model training.
-
-### Numerical Features
-
-Numerical features were transformed using:
-
-**StandardScaler**
-
-Standardization was applied so that numerical features were placed on a comparable scale before being provided to the Logistic Regression model.
-
-### Categorical Features
-
-Categorical features were transformed using:
-
-**OneHotEncoder**
-
-This converted the categorical department and aisle identifiers into numerical representations suitable for Logistic Regression.
-
-The preprocessing transformations were integrated into the model pipeline.
-
-This ensured that the same preprocessing approach was consistently applied during training and testing.
+The saved artifact was independently loaded and verified successfully.
 
 ---
 
-## 6. Model Training
+## 5. Validation Methodology
 
-The Logistic Regression baseline was trained using the Task 3 training dataset containing:
+Cross-validation was used to estimate the final model's performance across multiple validation splits.
 
-- **1,326,118 observations**
-- **19 selected features**
-- **Balanced target classes**
+The following metrics were evaluated:
 
-The model training completed successfully.
+- **ROC-AUC:** Measures the model's ability to distinguish between positive and negative classes across classification thresholds.
+- **F1-score:** Evaluates the balance between precision and recall for the positive (*Future Purchase*) class.
+- **Recall:** Monitored because identifying actual future purchases is an important objective.
 
-After training, predictions were generated for all:
+### Cross-Validation Results — Gradient Boosting
 
-**2,661,591 testing observations**
+| Metric | Mean | Standard Deviation |
+| :--- | :---: | :---: |
+| **ROC-AUC** | 0.812667 | 0.003678 |
+| **F1-score** | 0.740168 | 0.002504 |
+| **Recall** | 0.745800 | — |
 
-The number of predictions matched the number of actual test labels.
-
----
-
-## 7. Evaluation Methodology
-
-The model was evaluated on the untouched testing dataset.
-
-The following performance metrics were calculated:
-
-- Accuracy
-- Precision
-- Recall
-- F1-score
-
-A confusion matrix and classification report were also generated to provide a more detailed view of model performance.
-
-Because the testing dataset is highly imbalanced, accuracy was not considered sufficient by itself.
-
-Particular attention was therefore given to the precision, recall, and F1-score of the positive class:
-
-**Future Purchase**
+The relatively small standard deviations indicate that the model produced consistent performance across the validation folds.
 
 ---
 
-## 8. Performance Metrics
+## 6. Independent Test Evaluation
 
-### 8.1 Accuracy
+After cross-validation, the selected Gradient Boosting model was evaluated on the independent test dataset containing **2,661,591 observations**.
 
-The baseline Logistic Regression model achieved:
+The test dataset was not balanced and retained the original class distribution.
 
-**Accuracy: 0.7140 (71.40%)**
+### Test Dataset Performance
 
-Accuracy represents the proportion of all test observations that were classified correctly.
+| Metric | Test Performance |
+| :--- | :---: |
+| **Accuracy** | 0.730815 (73.08%) |
+| **Precision** | 0.155557 (15.56%) |
+| **Recall** | 0.750170 (75.02%) |
+| **F1-score** | 0.257680 |
+| **ROC-AUC** | 0.815208 |
 
-However, the test dataset contains 93.772% negative examples and only 6.228% positive examples. Therefore, accuracy alone does not provide a complete picture of the model's ability to identify future purchases.
-
----
-
-### 8.2 Precision
-
-For the **Future Purchase** class:
-
-**Precision: 0.15 (15%)**
-
-Precision measures how many of the observations predicted as future purchases were actually future purchases.
-
-The relatively low precision indicates that the model produces a substantial number of false-positive predictions.
+These results provide an objective evaluation of the final model under the original, highly imbalanced class distribution.
 
 ---
 
-### 8.3 Recall
+## 7. Performance Interpretation
 
-For the **Future Purchase** class:
+### 7.1 Accuracy
 
-**Recall: 0.75 (75%)**
+**Result:** `0.730815` (73.08%)
 
-Recall measures the proportion of actual future purchases that were successfully identified by the model.
+Accuracy represents the proportion of all test observations classified correctly. Because the test dataset contains a large majority of negative examples, accuracy should not be interpreted as the sole measure of model quality.
 
-The 75% recall indicates that the baseline model successfully identifies a substantial proportion of customers/product combinations that result in a future purchase.
+### 7.2 Precision
 
----
+**Result:** `0.155557` (15.56%)
 
-### 8.4 F1-score
+For the *Future Purchase* class, only a relatively small proportion of observations predicted as future purchases were true positives. The low precision is strongly influenced by the severe class imbalance in the independent test dataset.
 
-For the **Future Purchase** class:
+### 7.3 Recall
 
-**F1-score: 0.2454**
+**Result:** `0.750170` (75.02%)
 
-The F1-score combines precision and recall into a single metric using their harmonic mean.
+The model successfully identified approximately 75% of actual future purchases in the independent test dataset. This strong recall aligns with the objective of identifying potential future purchases.
 
-The relatively low F1-score is mainly influenced by the low precision of the positive class.
+### 7.4 F1-score
 
----
+**Result:** `0.257680`
 
-## 9. Confusion Matrix
+F1-score combines precision and recall using their harmonic mean. Although the model achieved strong recall, the low precision reduces the overall F1-score. Improving precision while maintaining useful recall remains an important area for future improvement.
 
-The Logistic Regression baseline produced the following confusion matrix on the test dataset:
+### 7.5 ROC-AUC
 
-| Actual / Predicted | No Future Purchase | Future Purchase |
-|---|---:|---:|
-| **No Future Purchase** | 1,776,495 | 719,331 |
-| **Future Purchase** | 41,951 | 123,814 |
+**Result:** `0.815208`
 
-The four outcomes can be interpreted as follows:
-
-- **True Negatives:** 1,776,495
-- **False Positives:** 719,331
-- **False Negatives:** 41,951
-- **True Positives:** 123,814
-
-The model correctly identified 123,814 future purchases while missing 41,951 actual future purchases.
-
-At the same time, 719,331 observations were incorrectly predicted as future purchases, which explains the relatively low precision.
+The ROC-AUC result indicates good ability to distinguish between future-purchase and no-future-purchase cases. The test ROC-AUC is also very close to the cross-validation ROC-AUC, indicating stable generalization of the model's ranking ability.
 
 ---
 
-## 10. Classification Report
+## 8. Cross-Validation vs. Independent Test Performance
 
-The complete classification report was:
+| Metric | Cross-Validation Mean | Independent Test | Generalization Gap |
+| :--- | :---: | :---: | :---: |
+| **ROC-AUC** | 0.812667 | 0.815208 | -0.002540 |
+| **Recall** | 0.745800 | 0.750170 | -0.004370 |
+| **F1-score** | 0.740168 | 0.257680 | 0.482487 |
 
-| Class | Precision | Recall | F1-score | Support |
-|---|---:|---:|---:|---:|
-| No Future Purchase | 0.98 | 0.71 | 0.82 | 2,495,826 |
-| Future Purchase | 0.15 | 0.75 | 0.25 | 165,765 |
-| **Accuracy** | | | **0.71** | 2,661,591 |
-| **Macro Average** | 0.56 | 0.73 | 0.53 | 2,661,591 |
-| **Weighted Average** | 0.93 | 0.71 | 0.79 | 2,661,591 |
+### Analysis
 
-The positive-class F1-score is reported as approximately 0.25 in the classification report, while the directly calculated F1-score used for baseline comparison is **0.2454**.
-
----
-
-## 11. Results Interpretation
-
-The Logistic Regression baseline provides a useful starting point for the future-purchase prediction problem.
-
-The model achieved a **75% recall** for the Future Purchase class. This means that it was able to identify a substantial proportion of the actual future purchases in the test dataset.
-
-However, the model's **15% precision** indicates that many of its future-purchase predictions were false positives.
-
-This behavior is also visible in the confusion matrix, where the number of false positives (**719,331**) is considerably larger than the number of true positives (**123,814**).
-
-The model therefore favors identifying more potential future purchases at the cost of producing many incorrect positive predictions.
-
-The **0.2454 F1-score** reflects the difficulty of simultaneously achieving high precision and high recall for the positive class.
+- **ROC-AUC consistency:** Cross-validation ROC-AUC (0.812667) and test ROC-AUC (0.815208) differ by only -0.002540, indicating stable ranking performance on unseen data.
+- **Recall consistency:** Cross-validation recall (0.745800) and test recall (0.750170) are also very close.
+- **F1-score difference:** The F1-score is substantially lower on the independent test dataset because the validation/training data were balanced while the independent test dataset retains the original 93.772% negative and 6.228% positive distribution. The resulting increase in false positives reduces precision and therefore F1-score.
 
 ---
 
-## 12. Class Imbalance Consideration
+## 9. Generalization Analysis
 
-Class imbalance is an important consideration in this evaluation.
+### ROC-AUC Generalization Gap
 
-The training dataset was balanced to provide the Logistic Regression model with an equal number of positive and negative training examples.
+`-0.002540`
 
-In contrast, the test dataset retained the original distribution:
+The near-zero ROC-AUC gap indicates that the final model did not show meaningful degradation in its ability to distinguish between the two classes when evaluated on unseen test data.
 
-- **93.772% No Future Purchase**
-- **6.228% Future Purchase**
+### F1 Generalization Gap
 
-This difference between training and testing distributions affects the evaluation results.
+`0.482487`
 
-For this reason, accuracy should not be interpreted independently. Precision, recall, F1-score, and the confusion matrix provide more useful information about the model's ability to identify future purchases.
+The larger F1-score difference is primarily associated with the change from the balanced training/validation distribution to the highly imbalanced independent test distribution. Therefore, this difference should not be interpreted by itself as evidence of severe overfitting.
 
-The baseline evaluation therefore uses the untouched test distribution rather than evaluating the model on a balanced test sample.
-
----
-
-## 13. Challenges and Considerations
-
-Several considerations were important during model evaluation.
-
-### 13.1 Class Imbalance
-
-The future-purchase class represents only 6.228% of the testing dataset. This makes accuracy less informative as a standalone metric.
-
-### 13.2 False Positive Predictions
-
-The model generated a large number of false-positive predictions. This resulted in a precision of only 15% for the Future Purchase class.
-
-### 13.3 Training and Testing Distribution
-
-The training dataset was balanced using random undersampling, while the testing dataset retained the original class distribution.
-
-This approach allows the model to learn from a balanced training set while testing its performance under a more realistic class distribution.
-
-### 13.4 Baseline Model Limitations
-
-Logistic Regression provides a useful baseline, but the results indicate substantial room for improvement, particularly in positive-class precision and F1-score.
-
-Future iterations can investigate more advanced models, improved feature engineering, class-weighting strategies, probability threshold optimization, or other approaches to improve the balance between precision and recall.
+Overall, the ROC-AUC and recall results provide stronger evidence that the final model generalizes reasonably well to the independent test dataset.
 
 ---
 
-## 14. Evaluation Summary
+## 10. Class Imbalance Consideration
 
-The baseline model performance is summarized below:
+Class imbalance is a major consideration in this project.
 
-| Metric | Result |
-|---|---:|
-| Accuracy | **71.40%** |
-| Future Purchase Precision | **15%** |
-| Future Purchase Recall | **75%** |
-| Future Purchase F1-score | **0.2454** |
-| Test Samples | **2,661,591** |
+### Training Dataset
 
-The baseline successfully identifies many future purchases, as demonstrated by its 75% recall.
+- **No Future Purchase:** 50.00%
+- **Future Purchase:** 50.00%
 
-However, its low precision results in a large number of false-positive predictions. Therefore, improving positive-class precision while maintaining useful recall is an important direction for future model iterations.
+### Independent Test Dataset
 
----
+- **No Future Purchase:** 93.772%
+- **Future Purchase:** 6.228%
 
-## 15. Conclusion
+The training dataset was balanced through random undersampling, while the independent test dataset retained the original distribution.
 
-A Logistic Regression model was successfully trained and evaluated as the baseline classifier for future customer-product purchase prediction.
+This difference affects metrics such as precision and F1-score. A model trained on a balanced dataset can achieve strong recall during validation, but when evaluated on the original negative-heavy distribution, false-positive predictions can become much more prominent.
 
-The model used standardized numerical features and one-hot encoded categorical features through a preprocessing pipeline.
-
-Evaluation was performed on the untouched test dataset containing the original class distribution.
-
-The baseline achieved:
-
-- **71.40% accuracy**
-- **15% precision** for Future Purchase
-- **75% recall** for Future Purchase
-- **0.2454 F1-score** for Future Purchase
-
-The results demonstrate that the baseline model can identify a substantial proportion of future purchases, but its relatively low precision leads to many false-positive predictions.
-
-Therefore, the Logistic Regression model serves as a useful reference point for subsequent model development and improvement.
+For this reason, ROC-AUC, precision, recall, and F1-score should be considered together rather than relying only on accuracy.
 
 ---
 
-## 16. Reference Implementation
+## 11. Model Size and Serialization
 
-The complete baseline model implementation, including:
+The final Gradient Boosting model was serialized using `joblib`.
 
-- Data loading
-- Feature selection
-- Preprocessing
-- Logistic Regression training
-- Test-set prediction
-- Performance metrics
-- Classification report
-- Confusion matrix
-- Exploratory visualizations
-- Model interpretation
+- **Artifact path:** `output/models/final_selected_model.joblib`
+- **Serialized model size:** 0.4642 MB
+- **Model class:** `<class 'sklearn.ensemble._gb.GradientBoostingClassifier'>`
+- **Configuration:** `GradientBoostingClassifier(max_depth=5, random_state=42)`
+- **Input feature count:** 19
 
-is available in:
+The saved model was independently reloaded and verified successfully. The loaded object was confirmed as a `GradientBoostingClassifier`, and the model was confirmed to contain 19 input features.
 
-`notebooks/task4_baseline_model.ipynb`
-
-This documentation complements the implementation by providing a concise description of the training methodology, evaluation approach, performance results, and key findings.
+This confirms that the final model artifact is available for future inference and deployment workflows.
 
 ---
 
-## 17. Task 5 Deliverables Checklist
+## 12. Challenges and Considerations
 
-The following Task 5 requirements have been addressed:
+### 12.1 Strong Class Imbalance
 
+The independent test dataset contains only 6.228% positive cases. Therefore, accuracy is less informative as a standalone metric.
+
+### 12.2 Low Positive-Class Precision
+
+The final model achieved 15.56% precision for the positive class. This indicates that a substantial number of positive predictions are false positives.
+
+### 12.3 Training and Testing Distribution
+
+The training dataset was balanced through random undersampling, while the independent test dataset retained the original distribution. This explains the considerable difference between validation F1-score and independent-test F1-score.
+
+### 12.4 Metric Selection
+
+Multiple complementary metrics were considered:
+
+- ROC-AUC for class discrimination and ranking ability
+- Recall for the proportion of actual future purchases identified
+- Precision for the reliability of positive predictions
+- F1-score for the balance between precision and recall
+- Accuracy as an overall classification measure
+
+### 12.5 Model Complexity
+
+Gradient Boosting provides a nonlinear model capable of capturing relationships that a simple linear baseline may not capture.
+
+The selected configuration uses:
+
+```text
+max_depth=5
+random_state=42
+```
+
+The final model was validated using cross-validation and then evaluated on an independent test dataset, reducing reliance on training performance alone.
+
+---
+
+## 13. Final Model Evaluation Summary
+
+### Core Performance Metrics
+
+| Metric | Cross-Validation | Independent Test |
+| :--- | :---: | :---: |
+| **ROC-AUC** | 0.812667 | 0.815208 |
+| **F1-score** | 0.740168 | 0.257680 |
+| **Recall** | 0.745800 | 0.750170 |
+| **Accuracy** | — | 0.730815 |
+| **Precision** | — | 0.155557 |
+
+### Validation and Artifact Summary
+
+| Measure | Result |
+| :--- | :---: |
+| **ROC-AUC CV Standard Deviation** | 0.003678 |
+| **F1 CV Standard Deviation** | 0.002504 |
+| **ROC-AUC Generalization Gap** | -0.002540 |
+| **F1 Generalization Gap** | 0.482487 |
+| **Serialized Model Size** | 0.4642 MB |
+| **Number of Features** | 19 |
+
+---
+
+## 14. Conclusion
+
+The model evaluation and validation process established **Gradient Boosting** as the final selected model for future customer-product purchase prediction.
+
+The final model achieved:
+
+- **Test ROC-AUC:** `0.815208`
+- **Test Recall:** `0.750170`
+- **Test Precision:** `0.155557`
+- **Test F1-score:** `0.257680`
+- **Test Accuracy:** `0.730815`
+
+The test ROC-AUC was highly consistent with cross-validation performance, with a generalization gap of only `-0.002540`. This indicates stable class-separation performance on unseen data.
+
+The model also achieved approximately 75% recall, meaning it identified a substantial proportion of actual future purchases. However, the positive-class precision was relatively low at 15.56%, resulting in a lower F1-score.
+
+The main factor affecting precision and F1-score is the strong difference between the balanced training distribution and the naturally imbalanced independent test distribution.
+
+Overall, Gradient Boosting provides a stronger and more flexible final model than the initial baseline approach and demonstrates good ROC-AUC and recall performance.
+
+Future improvements can focus on increasing positive-class precision and F1-score through probability-threshold optimization, class-weighting or cost-sensitive strategies where appropriate, and additional behavioral feature engineering.
+
+---
+
+## 15. Final Model Artifact
+
+```text
+Model File:           output/models/final_selected_model.joblib
+Model Type:           GradientBoostingClassifier
+Configuration:        GradientBoostingClassifier(max_depth=5, random_state=42)
+Input Features:       19
+Serialized Size:      0.4642 MB
+Verification Status:  Successfully loaded and validated via joblib
+```
+
+---
+
+## 16. Task 5 Deliverables Checklist
+
+- [x] Candidate model evaluation completed
+- [x] Final model selected
+- [x] Cross-validation performed
+- [x] ROC-AUC calculated
 - [x] Accuracy calculated
 - [x] Precision calculated
 - [x] Recall calculated
 - [x] F1-score calculated
-- [x] Classification report documented
-- [x] Confusion matrix documented
-- [x] Model training methodology documented
-- [x] Preprocessing methodology documented
-- [x] Feature engineering/feature selection documented
-- [x] Dataset and target distributions documented
-- [x] Evaluation methodology documented
-- [x] Challenges and considerations documented
+- [x] Independent test evaluation completed
+- [x] Generalization performance analyzed
+- [x] Class imbalance considered
+- [x] Model configuration documented
+- [x] Feature set documented
+- [x] Final model serialized
+- [x] Serialized model verified
+- [x] Model size documented
 - [x] Results interpreted
-- [x] Baseline conclusion documented
-- [x] Reference implementation identified
+- [x] Challenges and limitations documented
+- [x] Final model conclusion documented
