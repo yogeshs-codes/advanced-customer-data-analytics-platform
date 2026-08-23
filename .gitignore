@@ -2,7 +2,11 @@
 data/*
 !data/README.md
 
-output/
+output/*
+!output/models/
+output/models/*
+!output/models/final_selected_model.joblib
+
 __pycache__/
 *.pyc
 
@@ -12,6 +16,7 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
 # MLflow local tracking data
 mlflow.db
 mlruns/
