@@ -213,6 +213,132 @@ Interactive Swagger documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+## Detailed Model Serving API
+
+The final selected customer-product purchase prediction model is exposed through a FastAPI REST API implemented in:
+
+```text
+src/serving_api.py
+```
+
+The application loads:
+
+```text
+output/models/final_selected_model.joblib
+```
+
+The serving layer verifies that the trained model contains the expected **19 features** before inference.
+
+### API Endpoints
+
+#### `GET /health`
+
+Checks whether the API is running and whether the trained model has been loaded.
+
+Example response:
+
+```json
+{
+  "status": "healthy",
+  "model_loaded": true,
+  "model": "GradientBoostingClassifier",
+  "model_version": "gradient_boosting_v1",
+  "feature_count": 19
+}
+```
+
+Successful response: `200 OK`.
+
+#### `POST /predict`
+
+Generates a future-purchase prediction for one customer-product record.
+
+The request is validated by Pydantic before model inference. The 19 required fields are:
+
+| Field | Validation |
+| :--- | :--- |
+| `user_product_purchase_count` | >= 0 |
+| `user_product_reorder_count` | >= 0 |
+| `user_product_last_order_number` | >= 0 |
+| `user_product_reorder_rate` | 0 to 1 |
+| `user_product_avg_cart_position` | >= 0 |
+| `user_product_recency_orders` | >= 0 |
+| `department_id` | >= 0 |
+| `user_department_purchase_count` | >= 0 |
+| `user_department_purchase_share` | 0 to 1 |
+| `aisle_id` | >= 0 |
+| `user_aisle_purchase_count` | >= 0 |
+| `user_aisle_purchase_share` | 0 to 1 |
+| `user_total_orders` | >= 0 |
+| `user_avg_days_between_orders` | >= 0 |
+| `user_avg_order_hour` | 0 to 23 |
+| `user_avg_order_dow` | 0 to 6 |
+| `product_total_purchases` | >= 0 |
+| `product_unique_users` | >= 0 |
+| `product_reorder_rate` | 0 to 1 |
+
+The response contains:
+
+- `prediction` — binary prediction (`0` or `1`).
+- `prediction_label` — `Future Purchase` or `No Future Purchase`.
+- `probability_future_purchase` — probability of the future-purchase class.
+- `model` — serving model version.
+- `feature_count` — number of features used.
+
+Example response:
+
+```json
+{
+  "prediction": 0,
+  "prediction_label": "No Future Purchase",
+  "probability_future_purchase": 0.4677504844854496,
+  "model": "gradient_boosting_v1",
+  "feature_count": 19
+}
+```
+
+### Validation and Error Handling
+
+The Pydantic request schema enforces required fields, numeric types, non-negative values, rate ranges from `0` to `1`, order hour from `0` to `23`, and day-of-week from `0` to `6`.
+
+Invalid input is rejected with `422 Unprocessable Entity`. Unexpected prediction failures are returned as `500 Internal Server Error`.
+
+### Model Inference
+
+The API reads the trained model's `feature_names_in_` and constructs the inference DataFrame in the exact feature order expected by the model. It then produces both the class prediction and the probability for class `1`.
+
+### Interactive Documentation
+
+When running locally, FastAPI provides:
+
+```text
+Swagger UI: http://127.0.0.1:8000/docs
+OpenAPI schema: http://127.0.0.1:8000/openapi.json
+```
+
+### Run Locally
+
+```bash
+uvicorn src.serving_api:app --host 0.0.0.0 --port 8000
+```
+
+### Run with Docker
+
+```bash
+docker build -t customer-demand-api .
+docker run --name customer-demand-container -p 8000:8000 customer-demand-api
+```
+
+### Serving Deliverables
+
+| Component | Location |
+| :--- | :--- |
+| FastAPI application | `src/serving_api.py` |
+| Trained model artifact | `output/models/final_selected_model.joblib` |
+| API documentation | `docs/task1_model_serving_api.md` |
+| Docker configuration | `Dockerfile` |
+| Dependencies | `requirements.txt` |
+
 ## Dataset
 
 The project was initially referenced to the **Instacart Market Basket Analysis** dataset available on Kaggle.
@@ -393,6 +519,18 @@ The model-serving documentation is:
 ```text
 docs/task1_model_serving_api.md
 ```
+
+## Implementation Evidence
+
+The repository contains the actual implementation and supporting artifacts described above:
+
+- `src/serving_api.py` contains the FastAPI application, Pydantic request validation, response schema, model loading, `/health`, and `/predict`.
+- `output/models/final_selected_model.joblib` is the trained model artifact used by the API.
+- `docs/task1_model_serving_api.md` provides detailed Task 1 API documentation.
+- `Dockerfile` defines the containerized API runtime.
+- `requirements.txt` contains the application dependencies.
+
+These files provide direct source-code and configuration evidence for the model-serving implementation.
 
 ## Version Control
 
