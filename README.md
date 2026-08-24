@@ -4,7 +4,7 @@
 
 This project focuses on analyzing customer purchasing behavior and building a machine learning solution to understand and predict customer demand.
 
-The project follows a structured end-to-end machine learning workflow, covering problem definition, data understanding, preprocessing, exploratory data analysis, feature engineering, model development, model evaluation, experiment tracking, model selection, and model serving.
+The project follows an end-to-end machine learning workflow covering problem definition, data understanding, preprocessing, exploratory data analysis, feature engineering, model development, model evaluation, experiment tracking, model selection, model serving, production monitoring, and dashboard visualization.
 
 The main objective is to use customer transaction data to identify meaningful purchasing patterns and develop a data-driven solution that can support customer-product purchase prediction and demand-related business decision-making.
 
@@ -20,6 +20,8 @@ The main objective is to use customer transaction data to identify meaningful pu
 - Select a final model based on evaluation results.
 - Track machine learning experiments and results.
 - Serve the selected model through a REST API.
+- Monitor production prediction activity, latency, probability, and model health.
+- Provide a React-based model monitoring dashboard.
 - Containerize the model-serving application using Docker.
 - Present results and technical work through clear documentation.
 
@@ -82,13 +84,26 @@ The project is organized into the following major stages:
     - Validate prediction requests using Pydantic.
     - Return consistent JSON responses.
 
-11. **Containerization**
+11. **Model Monitoring**
+    - Record production prediction events.
+    - Track prediction distribution and purchase probabilities.
+    - Monitor inference latency.
+    - Detect latency anomalies and prediction-distribution drift.
+    - Expose monitoring metrics through the `/monitoring` endpoint.
+
+12. **Monitoring Dashboard**
+    - Provide a React/Vite operational dashboard.
+    - Display model and API health.
+    - Visualize prediction distribution and latency statistics.
+    - Display monitoring alerts and recent prediction records.
+
+13. **Containerization**
     - Package the model-serving application with Docker.
     - Install application dependencies inside the container.
     - Include the trained model required for inference.
     - Run the API through Uvicorn on port 8000.
 
-12. **Insights & Conclusion**
+14. **Insights & Conclusion**
     - Summarize key findings.
     - Identify important demand and purchasing patterns.
     - Discuss practical implications.
@@ -117,8 +132,9 @@ The machine learning development work includes:
 
 Key documentation and implementation files are maintained under `docs/` and `src/`.
 
-### Phase 3 - FastAPI and Docker
-### Task 1 - Model Serving API
+### Phase 3 - FastAPI, Docker, Model Monitoring, and Dashboard
+
+## Task 1 - Model Serving API
 
 The model-serving task exposes the final customer-product purchase prediction model through a FastAPI application.
 
@@ -154,7 +170,7 @@ Dockerfile
 requirements.txt
 ```
 
-The API serves the selected Gradient Boosting Classifier model using the trained model artifact:
+The API serves the selected Gradient Boosting Classifier model using:
 
 ```text
 output/models/final_selected_model.joblib
@@ -213,6 +229,223 @@ Interactive Swagger documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+## Task 2 - Model Monitoring and Monitoring Dashboard
+
+The model monitoring task extends the FastAPI serving layer with production-oriented monitoring of prediction activity, inference latency, prediction probabilities, prediction distribution, and model health.
+
+The monitoring implementation records prediction events and exposes aggregated monitoring metrics through the FastAPI `/monitoring` endpoint.
+
+### Model Monitoring Implementation
+
+The monitoring service is implemented in:
+
+```text
+src/model_monitor.py
+```
+
+The serving API integrates the monitoring service through:
+
+```text
+src/serving_api.py
+```
+
+After a successful prediction, the serving layer records monitoring information including:
+
+- Prediction timestamp.
+- Binary prediction result.
+- Probability of future purchase.
+- Model version.
+- Inference latency in milliseconds.
+
+The monitoring service aggregates these records and provides operational metrics for observing model-serving behavior.
+
+### Monitoring Metrics
+
+The `/monitoring` endpoint provides the following metrics:
+
+| Metric | Description |
+| :--- | :--- |
+| `total_predictions` | Total number of predictions processed |
+| `positive_predictions` | Number of predictions classified as future purchases |
+| `negative_predictions` | Number of predictions classified as no future purchase |
+| `positive_prediction_rate` | Percentage of positive predictions |
+| `negative_prediction_rate` | Percentage of negative predictions |
+| `recent_prediction_count` | Number of recent prediction records |
+| `recent_positive_prediction_rate` | Positive prediction rate in the recent prediction window |
+| `average_latency_ms` | Average model inference latency |
+| `minimum_latency_ms` | Minimum observed inference latency |
+| `maximum_latency_ms` | Maximum observed inference latency |
+| `average_probability_future_purchase` | Average predicted probability of future purchase |
+| `latency_anomaly` | Indicates whether an abnormal latency condition has been detected |
+| `prediction_distribution_drift` | Indicates whether prediction distribution drift has been detected |
+| `alerts` | Active monitoring alerts |
+| `recent_predictions` | Recent prediction-level monitoring records |
+
+### Monitoring API Endpoint
+
+#### `GET /monitoring`
+
+Returns the current production monitoring status and aggregated prediction metrics.
+
+Example response:
+
+```json
+{
+  "total_predictions": 2,
+  "positive_predictions": 2,
+  "negative_predictions": 0,
+  "positive_prediction_rate": 1.0,
+  "negative_prediction_rate": 0.0,
+  "recent_prediction_count": 2,
+  "recent_positive_prediction_rate": 1.0,
+  "average_latency_ms": 96.11,
+  "minimum_latency_ms": 71.73,
+  "maximum_latency_ms": 120.50,
+  "average_probability_future_purchase": 0.529,
+  "latency_anomaly": false,
+  "prediction_distribution_drift": false,
+  "alerts": []
+}
+```
+
+The monitoring endpoint allows the operational state of the model-serving system to be inspected without directly accessing prediction logs.
+
+### Monitoring and Anomaly Detection
+
+The monitoring system checks two important operational conditions.
+
+**Latency anomaly**
+
+Inference latency is tracked for every prediction. Minimum, average, and maximum latency values are calculated, and abnormal latency conditions can generate monitoring alerts.
+
+**Prediction distribution drift**
+
+The monitoring service tracks the distribution of prediction classes and compares recent prediction behavior against the expected monitoring baseline. This helps identify unusual changes in prediction behavior.
+
+### Recent Prediction Monitoring
+
+The monitoring response also provides recent prediction records containing:
+
+- Timestamp.
+- Prediction class.
+- Future-purchase probability.
+- Model version.
+- Inference latency.
+
+Example:
+
+```json
+{
+  "timestamp": "2026-08-24T14:55:22.953156+00:00",
+  "prediction": 1,
+  "probability_future_purchase": 0.5290054925742836,
+  "model": "gradient_boosting_v1",
+  "latency_ms": 71.73
+}
+```
+
+### Monitoring Dashboard
+
+A React-based monitoring dashboard is provided under:
+
+```text
+dashboard/
+```
+
+The dashboard is implemented using:
+
+```text
+dashboard/src/App.jsx
+dashboard/src/App.css
+dashboard/src/index.css
+```
+
+The dashboard consumes the FastAPI `/monitoring` endpoint and presents the monitoring information in an operational interface.
+
+The dashboard provides:
+
+- System health status.
+- Model name and version.
+- Algorithm information.
+- Number of model features.
+- API health status.
+- Total prediction count.
+- Positive prediction count and rate.
+- Negative prediction count and rate.
+- Average inference latency.
+- Prediction distribution visualization.
+- Latency statistics visualization.
+- Latency anomaly status.
+- Prediction distribution drift status.
+- Average future-purchase probability.
+- Recent prediction history.
+
+The dashboard uses Recharts for monitoring visualizations.
+
+### Dashboard Architecture
+
+The monitoring flow is:
+
+```text
+Customer Prediction Request
+          ↓
+     FastAPI /predict
+          ↓
+     Model Inference
+          ↓
+   Monitoring Service
+          ↓
+Prediction + Probability + Latency
+          ↓
+     /monitoring
+          ↓
+React Monitoring Dashboard
+```
+
+This provides a clear separation between model inference, monitoring data collection, monitoring metrics, and dashboard visualization.
+
+### Running the Monitoring System
+
+Start the FastAPI serving application from the project root:
+
+```bash
+uvicorn src.serving_api:app --host 0.0.0.0 --port 8000
+```
+
+The monitoring endpoint is then available at:
+
+```text
+http://127.0.0.1:8000/monitoring
+```
+
+Start the React dashboard from the dashboard directory:
+
+```bash
+cd dashboard
+npm install
+npm run dev
+```
+
+The Vite development server provides the dashboard locally, normally at:
+
+```text
+http://localhost:5173
+```
+
+The dashboard communicates with the FastAPI monitoring endpoint on port `8000`.
+
+### Monitoring Deliverables
+
+| Component | Location |
+| :--- | :--- |
+| Monitoring service | `src/model_monitor.py` |
+| FastAPI serving and monitoring integration | `src/serving_api.py` |
+| Monitoring documentation | `docs/model_monitoring.md` |
+| React dashboard | `dashboard/` |
+| Dashboard application | `dashboard/src/App.jsx` |
+| Dashboard styling | `dashboard/src/App.css` |
+| Dashboard package configuration | `dashboard/package.json` |
+
 ## Detailed Model Serving API
 
 The final selected customer-product purchase prediction model is exposed through a FastAPI REST API implemented in:
@@ -234,20 +467,6 @@ The serving layer verifies that the trained model contains the expected **19 fea
 #### `GET /health`
 
 Checks whether the API is running and whether the trained model has been loaded.
-
-Example response:
-
-```json
-{
-  "status": "healthy",
-  "model_loaded": true,
-  "model": "GradientBoostingClassifier",
-  "model_version": "gradient_boosting_v1",
-  "feature_count": 19
-}
-```
-
-Successful response: `200 OK`.
 
 #### `POST /predict`
 
@@ -285,18 +504,6 @@ The response contains:
 - `model` — serving model version.
 - `feature_count` — number of features used.
 
-Example response:
-
-```json
-{
-  "prediction": 0,
-  "prediction_label": "No Future Purchase",
-  "probability_future_purchase": 0.4677504844854496,
-  "model": "gradient_boosting_v1",
-  "feature_count": 19
-}
-```
-
 ### Validation and Error Handling
 
 The Pydantic request schema enforces required fields, numeric types, non-negative values, rate ranges from `0` to `1`, order hour from `0` to `23`, and day-of-week from `0` to `6`.
@@ -320,13 +527,6 @@ OpenAPI schema: http://127.0.0.1:8000/openapi.json
 
 ```bash
 uvicorn src.serving_api:app --host 0.0.0.0 --port 8000
-```
-
-### Run with Docker
-
-```bash
-docker build -t customer-demand-api .
-docker run --name customer-demand-container -p 8000:8000 customer-demand-api
 ```
 
 ### Serving Deliverables
@@ -362,6 +562,11 @@ The dataset contains information related to customers, orders, products, and ord
 - **Uvicorn** – ASGI server
 - **Pydantic** – Request validation
 - **Docker** – Application containerization
+- **React** – Monitoring dashboard
+- **Vite** – Frontend development server and build tool
+- **Recharts** – Monitoring data visualizations
+- **Redis** – Monitoring data storage
+- **Kafka** – Prediction-event messaging/streaming
 - **Git/GitHub** – Version control and project hosting
 
 ## Project Structure
@@ -370,6 +575,17 @@ The repository is organized approximately as follows:
 
 ```text
 advanced-customer-data-analytics-platform/
+
+│
+├── dashboard/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.js
 │
 ├── data/
 │   └── README.md
@@ -378,6 +594,7 @@ advanced-customer-data-analytics-platform/
 │   └── ...
 │
 ├── src/
+│   ├── model_monitor.py
 │   ├── serving_api.py
 │   ├── compare_model_architectures.py
 │   ├── tune_hyperparameters.py
@@ -389,6 +606,7 @@ advanced-customer-data-analytics-platform/
 │       └── final_selected_model.joblib
 │
 ├── docs/
+│   ├── model_monitoring.md
 │   ├── phase2_task1_model_training.md
 │   ├── hyperparameter_tuning.md
 │   ├── task5_evaluation_and_documentation.md
@@ -431,7 +649,14 @@ Install the project dependencies:
 pip install -r requirements.txt
 ```
 
-## Model Serving Setup
+For the dashboard:
+
+```powershell
+cd dashboard
+npm install
+```
+
+## Model Serving and Monitoring Setup
 
 The model-serving API requires the trained model artifact to be available at:
 
@@ -439,17 +664,25 @@ The model-serving API requires the trained model artifact to be available at:
 output/models/final_selected_model.joblib
 ```
 
-From the project root, the FastAPI application can be started with:
+From the project root, start the FastAPI application with:
 
 ```bash
 uvicorn src.serving_api:app --host 0.0.0.0 --port 8000
+```
+
+The main API endpoints are:
+
+```text
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/predict
+http://127.0.0.1:8000/monitoring
 ```
 
 For containerized execution, use the Docker commands described above.
 
 ## Usage
 
-The project can be explored through the source code, notebooks, documentation, trained model artifacts, and API implementation provided in the repository.
+The project can be explored through the source code, notebooks, documentation, trained model artifacts, API implementation, monitoring service, and dashboard.
 
 The overall workflow is:
 
@@ -478,6 +711,10 @@ Final Model Evaluation
         ↓
 FastAPI Model Serving
         ↓
+Production Model Monitoring
+        ↓
+React Monitoring Dashboard
+        ↓
 Docker Containerization
         ↓
 Prediction & Deployment Readiness
@@ -499,7 +736,26 @@ The API is designed to return:
 
 The serving API also includes health monitoring, input validation, Swagger documentation, and Docker-based execution.
 
-Detailed model evaluation and task-specific results are documented in the relevant files under `docs/`.
+### Current Monitoring Results
+
+During local monitoring validation, the `/monitoring` endpoint returned:
+
+- **Total predictions:** 2
+- **Positive predictions:** 2
+- **Negative predictions:** 0
+- **Positive prediction rate:** 100%
+- **Average latency:** 96.11 ms
+- **Minimum latency:** 71.73 ms
+- **Maximum latency:** 120.50 ms
+- **Average future-purchase probability:** approximately 52.9%
+- **Latency anomaly:** false
+- **Prediction distribution drift:** false
+- **Active alerts:** none
+- **Model version:** `gradient_boosting_v1`
+- **Model algorithm:** `GradientBoostingClassifier`
+- **Feature count:** 19
+
+These values demonstrate that the monitoring service successfully collected prediction-level information and exposed aggregated operational metrics to the dashboard.
 
 ## Documentation
 
@@ -513,6 +769,13 @@ Examples include:
 - Final model selection and validation.
 - Final model evaluation and documentation.
 - Model serving API documentation.
+- Model monitoring documentation.
+
+The main monitoring documentation is:
+
+```text
+docs/model_monitoring.md
+```
 
 The model-serving documentation is:
 
@@ -524,13 +787,18 @@ docs/task1_model_serving_api.md
 
 The repository contains the actual implementation and supporting artifacts described above:
 
-- `src/serving_api.py` contains the FastAPI application, Pydantic request validation, response schema, model loading, `/health`, and `/predict`.
+- `src/serving_api.py` contains the FastAPI application, Pydantic request validation, response schema, model loading, `/health`, `/predict`, and `/monitoring` endpoints.
+- `src/model_monitor.py` contains the model monitoring implementation for prediction records, aggregated metrics, latency monitoring, prediction-distribution monitoring, and alerts.
+- `dashboard/src/App.jsx` contains the React monitoring dashboard and its integration with the monitoring API.
+- `dashboard/src/App.css` and `dashboard/src/index.css` provide the dashboard presentation and responsive layout.
+- `docs/model_monitoring.md` documents the monitoring architecture, metrics, and operational behavior.
 - `output/models/final_selected_model.joblib` is the trained model artifact used by the API.
 - `docs/task1_model_serving_api.md` provides detailed Task 1 API documentation.
 - `Dockerfile` defines the containerized API runtime.
-- `requirements.txt` contains the application dependencies.
+- `requirements.txt` contains the Python application dependencies.
+- `dashboard/package.json` defines the frontend dependencies, including React and Recharts.
 
-These files provide direct source-code and configuration evidence for the model-serving implementation.
+These files provide direct source-code and configuration evidence for the model-serving and model-monitoring implementation.
 
 ## Version Control
 
@@ -553,9 +821,10 @@ Potential future improvements include:
 - Improving model calibration and threshold selection.
 - Adding automated API tests.
 - Adding CI/CD validation for the serving application.
-- Adding API monitoring and logging.
-- Deploying the containerized API to a cloud platform.
-- Adding an interactive dashboard for business users.
+- Extending monitoring with additional production alerting rules.
+- Adding automated monitoring reports and historical trend analysis.
+- Deploying the monitoring dashboard alongside the production API.
+- Deploying the containerized API and dashboard to a cloud platform.
 - Automating model retraining and model versioning.
 - Extending the serving layer for batch prediction.
 
