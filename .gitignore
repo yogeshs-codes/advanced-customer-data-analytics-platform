@@ -20,3 +20,4 @@ Thumbs.db
 # MLflow local tracking data
 mlflow.db
 mlruns/
+dashboard/node_modules/

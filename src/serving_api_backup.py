@@ -10,11 +10,8 @@ from typing import Dict
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import time
 
-from src.model_monitor import log_prediction, get_monitoring_stats
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -64,19 +61,7 @@ app = FastAPI(
     version=MODEL_VERSION,
 )
 
-# ---------------------------------------------------------------------------
-# CORS configuration
-# ---------------------------------------------------------------------------
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 # ---------------------------------------------------------------------------
 # Request schema
 # ---------------------------------------------------------------------------
@@ -145,18 +130,6 @@ def health_check() -> Dict[str, object]:
 
 
 # ---------------------------------------------------------------------------
-# Monitoring endpoint
-# ---------------------------------------------------------------------------
-
-@app.get("/monitoring")
-def monitoring():
-    """
-    Return model monitoring metrics for the monitoring dashboard.
-    """
-    return get_monitoring_stats()
-
-
-# ---------------------------------------------------------------------------
 # Prediction endpoint
 # ---------------------------------------------------------------------------
 
@@ -165,7 +138,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
     """
     Generate a future-purchase prediction for one customer-product record.
     """
-    start_time = time.perf_counter()
+
     try:
         # Convert validated Pydantic input into a dictionary.
         input_data = request.model_dump()
@@ -196,15 +169,6 @@ def predict(request: PredictionRequest) -> PredictionResponse:
             "Future Purchase"
             if prediction == 1
             else "No Future Purchase"
-        )
-
-        latency_ms = (time.perf_counter() - start_time) * 1000
-
-        log_prediction(
-            prediction=prediction,
-            probability_future_purchase=probability_future_purchase,
-            model_version=MODEL_VERSION,
-            latency_ms=latency_ms,
         )
 
         return PredictionResponse(
